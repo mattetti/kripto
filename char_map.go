@@ -98,12 +98,68 @@ func (m CharUseMap) EnglishScore() (score float64) {
 	return maxScore - penalty
 }
 
+// ASCIIScore allocates a score based on ASCII like the char map is.
+func (m *CharUseMap) ASCIIScore() float64 {
+	var penalty float64
+
+	var totalCharCount float64
+	for _, charStats := range *m {
+		totalCharCount += charStats.Count
+	}
+	maxScore := totalCharCount * 50.0
+
+	for b, charStats := range *m {
+		if !IsPrintable(b) {
+			penalty += charStats.Count * 100
+			continue
+		}
+		// treating letters and numbers are what we want
+		if IsASCIILetter(b) || IsNumber(b) {
+			continue
+		}
+		if IsSpace(b) {
+			if charStats.Freq > 0.3 {
+				penalty += charStats.Count * 30
+			}
+			continue
+		}
+		if IsPunctuation(b) {
+			// check the frequency
+			if charStats.Freq < 0.1 {
+				// probably fine
+				penalty += charStats.Count * 10
+				continue
+			}
+			if charStats.Freq < 0.3 {
+				penalty += charStats.Count * 10
+				continue
+			}
+			penalty += charStats.Count * 40
+			continue
+		}
+		penalty += charStats.Count * 60
+	}
+
+	return maxScore - penalty
+}
+
 func (m *CharUseMap) String() string {
 	var out string
 	for b, stats := range *m {
 		out += fmt.Sprintf("%s: %+v\n", string(b), *stats)
 	}
 	return out
+}
+
+// IsPunctuation checks if the provided byte can be considered as punctuation
+func IsPunctuation(b byte) bool {
+	switch b {
+	// !"'(),:;?
+	case 33, 34, 39, 40, 41, 44, 46, 58, 59, 63:
+		return true
+	default:
+		return false
+	}
 }
 
 // IsLetter checks if the byte is an ASCII letter (upper or lower case)
@@ -130,6 +186,10 @@ func IsNumber(b byte) bool {
 // IsSpace does what you expect it to do
 func IsSpace(b byte) bool {
 	return b == 32
+}
+
+func IsPrintable(b byte) bool {
+	return b >= 32 && b <= 126
 }
 
 // CharMaps are a colletion of CharUseMaps so we can compare them to each other.

@@ -11,6 +11,41 @@ func SingleCharXor(encStr []byte, k byte) []byte {
 	return outB
 }
 
+// MultiCharXor xors a slice of bytes using a multiple character repeating key
+// This is also known as the Vigenère cipher
+// https://en.wikipedia.org/wiki/Vigen%C3%A8re_cipher
+func MultiCharXor(encStr []byte, k []byte) []byte {
+	out := make([]byte, len(encStr))
+	kIDX := 0
+
+	for i, b := range encStr {
+		out[i] = b ^ k[kIDX]
+		kIDX++
+		if kIDX > len(k)-1 {
+			kIDX = 0
+		}
+	}
+	return out
+}
+
+// MostLikelyXorKey tries to guess what the single char xor key might be for a given string.
+// Note that this code doesn't do any language analyze and takes a naive/brute force approach.
+// Each key is tested against the cypher text and the result map is analyzed.
+func MostLikelyXorKey(cypherBlock []byte) byte {
+	bestScore := 0.0
+	var winnerK byte
+	for k := 0; k < 255; k++ {
+		data := SingleCharXor(cypherBlock, byte(k))
+		cMap := NewCharMap(data)
+		score := cMap.ASCIIScore()
+		if score >= bestScore {
+			bestScore = score
+			winnerK = byte(k)
+		}
+	}
+	return winnerK
+}
+
 // GuessMultiCharXorKeySize returns a sorted list of most likely key sizes
 // for a multi character xor key based on the passed encoded string.
 // The slice of possible keys is 10 or less.

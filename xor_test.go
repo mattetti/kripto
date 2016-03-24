@@ -1,10 +1,45 @@
 package kripto
 
 import (
+	"bytes"
 	"io/ioutil"
 	"reflect"
 	"testing"
 )
+
+func TestMultiCharXor(t *testing.T) {
+	testCases := []struct {
+		input  string
+		key    string
+		output []byte
+	}{
+		{"CRYPTOISSHORTFORCRYPTOGRAPHY",
+			"ABCD",
+			// crypto
+			[]byte{
+				// crypto
+				0x2, 0x10, 0x1a, 0x14, 0x15, 0xd,
+				// isshortfor
+				0xa, 0x17, 0x12, 0xa, 0xc, 0x16, 0x15, 0x4, 0xc, 0x16,
+				// crypto
+				0x2, 0x10, 0x1a, 0x14, 0x15, 0xd,
+				// graphy
+				0x4, 0x16, 0x0, 0x12, 0xb, 0x1d},
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Logf("test case %d\n", i)
+		o := MultiCharXor([]byte(tc.input), []byte(tc.key))
+		if bytes.Compare(o, []byte(tc.output)) != 0 {
+			t.Fatalf("expected %#v\ngot\n%#v\n", []byte(tc.output), o)
+		}
+		o = MultiCharXor(o, []byte(tc.key))
+		if bytes.Compare(o, []byte(tc.input)) != 0 {
+			t.Fatalf("expected to go back to %#v\ngot\n%#v\n", []byte(tc.input), o)
+		}
+	}
+}
 
 func TestGuessMultiCharXorKeySize(t *testing.T) {
 	testCases := []struct {
