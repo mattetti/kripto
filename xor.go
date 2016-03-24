@@ -50,11 +50,17 @@ func MostLikelyXorKey(cypherBlock []byte) byte {
 // for a multi character xor key based on the passed encoded string.
 // The slice of possible keys is 10 or less.
 func GuessMultiCharXorKeySize(encodedData []byte, maxSize int) []int {
+	if len(encodedData) < maxSize {
+		maxSize = len(encodedData)
+	}
 	diffs := diffCol{}
 	// for each key size between 2 and max size, we are
 	// calculating the hamming distance between blocks of the key size.
 	// The key size with the smallest normalized edit distance is probably the key
-	for i := 2; i < maxSize+1; i++ {
+	for i := 2; i < maxSize; i++ {
+		if i*4 > len(encodedData) {
+			break
+		}
 		first := float64(HammingDiff(encodedData[:i], encodedData[i:i+i])) / float64(i)
 		second := float64(HammingDiff(encodedData[i*2:i*3], encodedData[i*3:i*4])) / float64(i)
 
