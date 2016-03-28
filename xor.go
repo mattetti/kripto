@@ -11,6 +11,34 @@ func SingleCharXor(encStr []byte, k byte) []byte {
 	return outB
 }
 
+// BreakSingleCharXor does its best to break English text encrypted using a single character xor key.
+// The processFn param is a function that can be used to apply basic input processing (hex/base64 decoding for instance).
+// TODO: create a separate type for xor breakers to offer more flexibilty.
+func BreakSingleCharXor(xord []byte, processFn func(data []byte) []byte) (out []byte, key byte) {
+	if processFn != nil {
+		xord = processFn(xord)
+	}
+
+	stats := ByteKeyColStats{}
+	for k := byte(0); k < 255; k++ {
+		text := SingleCharXor(xord, k)
+		m := NewCharMap(text)
+		stats = append(stats, &ByteKeyStats{
+			CharMap: m,
+			Score:   m.EnglishScore(true),
+			Text:    text,
+			Key:     k,
+		})
+	}
+
+	if len(stats) == 0 {
+		return
+	}
+
+	sort.Sort(stats)
+	return stats[0].Text, stats[0].Key
+}
+
 // MultiCharXor xors a slice of bytes using a multiple character repeating key
 // This is also known as the Vigenère cipher
 // https://en.wikipedia.org/wiki/Vigen%C3%A8re_cipher

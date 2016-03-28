@@ -7,6 +7,50 @@ import (
 	"testing"
 )
 
+func TestBreakSingleCharXor(t *testing.T) {
+
+	testCases := []struct {
+		input  string
+		output string
+		fn     func([]byte) []byte
+		key    byte
+	}{
+		{
+			"1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736",
+			"Cooking MC's like a pound of bacon",
+			DeHex,
+			'X',
+		},
+		{
+			"7b5a4215415d544115415d5015455447414c155c46155f4058455c5b523f",
+			"Now that the party is jumping\n",
+			DeHex,
+			'5',
+		},
+		// Base64 test
+		{
+			"aVhTWl5FCkNZCkxfRAYKQ1lEDV4KQ14V",
+			"Crypto is fun, isn't it?",
+			DeBase64,
+			42,
+		},
+		// no processing test
+		{
+			string([]byte{0xe, 0x3f, 0x34, 0x3d, 0x39, 0x22, 0x6d, 0x24, 0x3e, 0x6d, 0x2b, 0x38, 0x23, 0x61, 0x6d, 0x24, 0x3e, 0x23, 0x6a, 0x39, 0x6d, 0x24, 0x39, 0x72}),
+			"Crypto is fun, isn't it?",
+			nil,
+			'M',
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Logf("test case %d\n", i)
+		if o, k := BreakSingleCharXor([]byte(tc.input), tc.fn); string(o) != tc.output || k != tc.key {
+			t.Fatalf("expected to get:\b'%s' using key %s\nbut got\n'%s'\n from key %s\n", tc.output, string(tc.key), o, string(k))
+		}
+	}
+}
+
 func TestMultiCharXor(t *testing.T) {
 	testCases := []struct {
 		input  string
