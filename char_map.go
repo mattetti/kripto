@@ -151,10 +151,12 @@ func (m *CharUseMap) String() string {
 
 // IsPunctuation checks if the provided byte can be considered as "punctuation"
 func IsPunctuation(b byte) bool {
+	// TODO: maybe should rename and use IsASCIILetter with better bounds to determine, printable
+	// non letter/numbers chars.
 	switch b {
-	case '"', '\'', '(', ')', ',', ':', ';', '?', '!':
+	case '"', '\'', '(', ')', ',', ':', ';', '.', '?', '!':
 		return true
-	case '[', ']', '{', '}', '+', '-', '~', '`', '*', '%', '@', '$', '<', '>', '|', '_', '\\', '/':
+	case '[', ']', '{', '}', '+', '-', '~', '`', '*', '%', '@', '$', '<', '>', '|', '_', '\\', '/', '#', '^':
 		return true
 	default:
 		return false

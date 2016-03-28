@@ -75,6 +75,7 @@ func MostLikelyXorKey(cypherBlock []byte) byte {
 			winnerK = byte(k)
 		}
 	}
+
 	return winnerK
 }
 
