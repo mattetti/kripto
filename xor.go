@@ -2,6 +2,9 @@ package kripto
 
 import "sort"
 
+// DataProcessFn offers a generic interface to process input data
+type DataProcessFn func(data []byte) []byte
+
 // SingleCharXor xors a slice of bytes using the passed key
 func SingleCharXor(encStr []byte, k byte) []byte {
 	outB := make([]byte, len(encStr))
@@ -13,8 +16,8 @@ func SingleCharXor(encStr []byte, k byte) []byte {
 
 // BreakSingleCharXor does its best to break English text encrypted using a single character xor key.
 // The processFn param is a function that can be used to apply basic input processing (hex/base64 decoding for instance).
-// TODO: create a separate type for xor breakers to offer more flexibilty.
-func BreakSingleCharXor(xord []byte, processFn func(data []byte) []byte) (out []byte, key byte) {
+// The scorer param is used to score the output data and find the right key.
+func BreakSingleCharXor(xord []byte, processFn DataProcessFn, scorer CharMapScorer) (out []byte, key byte) {
 	if processFn != nil {
 		xord = processFn(xord)
 	}
@@ -25,7 +28,7 @@ func BreakSingleCharXor(xord []byte, processFn func(data []byte) []byte) (out []
 		m := NewCharMap(text)
 		stats = append(stats, &ByteKeyStats{
 			CharMap: m,
-			Score:   m.EnglishScore(true),
+			Score:   scorer.Score(m),
 			Text:    text,
 			Key:     k,
 		})

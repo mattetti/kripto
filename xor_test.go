@@ -43,9 +43,10 @@ func TestBreakSingleCharXor(t *testing.T) {
 		},
 	}
 
+	scorer := &EnglishScorer{WithSpace: true}
 	for i, tc := range testCases {
 		t.Logf("test case %d\n", i)
-		if o, k := BreakSingleCharXor([]byte(tc.input), tc.fn); string(o) != tc.output || k != tc.key {
+		if o, k := BreakSingleCharXor([]byte(tc.input), tc.fn, scorer); string(o) != tc.output || k != tc.key {
 			t.Fatalf("expected to get:\b'%s' using key %s\nbut got\n'%s'\n from key %s\n", tc.output, string(tc.key), o, string(k))
 		}
 	}
