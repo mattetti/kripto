@@ -46,7 +46,7 @@ func TestGuessMultiCharXorKeySize(t *testing.T) {
 		file  string
 		sizes []int
 	}{
-		{"6.txt", []int{2, 20, 7, 35, 4, 24, 28, 3, 32, 38}},
+		{"6.txt", []int{3, 8, 32, 28, 38, 25, 35, 20, 31, 24}},
 	}
 
 	for i, tc := range testCases {
@@ -57,6 +57,26 @@ func TestGuessMultiCharXorKeySize(t *testing.T) {
 		}
 		if o := GuessMultiCharXorKeySize(data, 40); !reflect.DeepEqual(o, tc.sizes) {
 			t.Fatalf("expected %v\ngot\n%v\n", tc.sizes, o)
+		}
+	}
+}
+
+func TestMostLikelyXorKey(t *testing.T) {
+	t.Skip("To hard to test with only a few letters, we need to apply Kasiski approach")
+	testCases := []struct {
+		input []byte
+		k     byte
+	}{
+		0: {[]byte{0x2, 0x15, 0x12, 0x15, 0x2, 0x15, 0x0}, 'A'},
+		1: {[]byte{0x10, 0xd, 0xa, 0x4, 0x10, 0xd, 0x12}, 'B'},
+		2: {[]byte{0x1a, 0xa, 0xc, 0xc, 0x1a, 0x4, 0xb}, 'C'},
+		3: {[]byte{0x14, 0x17, 0x16, 0x16, 0x14, 0x16, 0x1d}, 'D'},
+	}
+
+	for i, tc := range testCases {
+		t.Logf("test case %d\n", i)
+		if k := MostLikelyXorKey(tc.input); k != tc.k {
+			t.Fatalf("expected key %s\ngot\n%s\n", string(tc.k), string(k))
 		}
 	}
 }

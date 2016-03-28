@@ -29,16 +29,20 @@ func MultiCharXor(encStr []byte, k []byte) []byte {
 }
 
 // MostLikelyXorKey tries to guess what the single char xor key might be for a given string.
-// Note that this code doesn't do any language analyze and takes a naive/brute force approach.
-// Each key is tested against the cypher text and the result map is analyzed.
+// This is a naive brute force approach that looks at the output text and checks its statistical validity
+// as English text (using spaces).
 func MostLikelyXorKey(cypherBlock []byte) byte {
 	bestScore := 0.0
 	var winnerK byte
 	for k := 0; k < 255; k++ {
 		data := SingleCharXor(cypherBlock, byte(k))
 		cMap := NewCharMap(data)
-		score := cMap.ASCIIScore()
+		score := cMap.EnglishScore(true)
 		if score >= bestScore {
+			// give a preference to ascii letters
+			if score == bestScore && IsASCIILetter(winnerK) {
+				continue
+			}
 			bestScore = score
 			winnerK = byte(k)
 		}
@@ -57,16 +61,27 @@ func GuessMultiCharXorKeySize(encodedData []byte, maxSize int) []int {
 	// for each key size between 2 and max size, we are
 	// calculating the hamming distance between blocks of the key size.
 	// The key size with the smallest normalized edit distance is probably the key
-	for i := 2; i < maxSize; i++ {
-		if i*4 > len(encodedData) {
-			break
+
+	for keySize := 2; keySize < maxSize; keySize++ {
+		chunks := [][]byte{}
+		// extract up to 4 chunks of data
+		for i := 0; i < 4; i++ {
+			if keySize*(i+1) > len(encodedData) {
+				break
+			}
+			chunks = append(chunks, encodedData[keySize*i:keySize*(i+1)])
 		}
-		first := float64(HammingDiff(encodedData[:i], encodedData[i:i+i])) / float64(i)
-		second := float64(HammingDiff(encodedData[i*2:i*3], encodedData[i*3:i*4])) / float64(i)
+
+		diffSum := 0.0
+		for i, c := range chunks {
+			for _, otherC := range chunks[i:] {
+				diffSum += float64(HammingDiff(c, otherC))
+			}
+		}
 
 		diffs = append(diffs, &diff{
-			val:      i,
-			normDiff: (first + second) / 2,
+			val:      keySize,
+			normDiff: diffSum / float64(len(chunks)) / float64(keySize),
 		})
 	}
 	sort.Sort(diffs)

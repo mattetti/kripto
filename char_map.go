@@ -10,33 +10,34 @@ import (
 var Debug = false
 
 // EnglishLetterFreqs represent the verage % of time each letter appears in English text
+// From https://en.wikipedia.org/wiki/Letter_frequency#Relative_frequencies_of_letters_in_the_English_language
 var EnglishLetterFreqs = &CharUseMap{
-	'a': {Freq: 8.167},
-	'b': {Freq: 1.492},
-	'c': {Freq: 2.782},
-	'd': {Freq: 4.253},
-	'e': {Freq: 12.702},
-	'f': {Freq: 2.228},
-	'g': {Freq: 2.015},
-	'h': {Freq: 6.094},
-	'i': {Freq: 6.966},
-	'j': {Freq: 0.153},
-	'k': {Freq: 0.772},
-	'l': {Freq: 4.025},
-	'm': {Freq: 2.406},
-	'n': {Freq: 6.749},
-	'o': {Freq: 7.507},
-	'p': {Freq: 1.929},
-	'q': {Freq: 0.095},
-	'r': {Freq: 5.987},
-	's': {Freq: 6.327},
-	't': {Freq: 9.056},
-	'u': {Freq: 2.758},
-	'v': {Freq: 0.978},
-	'w': {Freq: 2.360},
-	'x': {Freq: 0.150},
-	'y': {Freq: 1.974},
-	'z': {Freq: 0.074},
+	'a': {Freq: 0.08167},
+	'b': {Freq: 0.01492},
+	'c': {Freq: 0.02782},
+	'd': {Freq: 0.04253},
+	'e': {Freq: 0.12702},
+	'f': {Freq: 0.02228},
+	'g': {Freq: 0.02015},
+	'h': {Freq: 0.06094},
+	'i': {Freq: 0.06966},
+	'j': {Freq: 0.00153},
+	'k': {Freq: 0.00772},
+	'l': {Freq: 0.04025},
+	'm': {Freq: 0.02406},
+	'n': {Freq: 0.06749},
+	'o': {Freq: 0.07507},
+	'p': {Freq: 0.01929},
+	'q': {Freq: 0.00095},
+	'r': {Freq: 0.05987},
+	's': {Freq: 0.06327},
+	't': {Freq: 0.09056},
+	'u': {Freq: 0.02758},
+	'v': {Freq: 0.00978},
+	'w': {Freq: 0.02360},
+	'x': {Freq: 0.00150},
+	'y': {Freq: 0.01974},
+	'z': {Freq: 0.00074},
 }
 
 // CharStats represents the metrics of a character from a char map
@@ -50,52 +51,47 @@ type CharUseMap map[byte]*CharStats
 
 // EnglishScore checks if the map looks English.
 // WIP
-func (m CharUseMap) EnglishScore() (score float64) {
+func (m CharUseMap) EnglishScore(spacedText bool) (score float64) {
 	var penalty float64
+	var letterPenalty float64
 	freqs := *EnglishLetterFreqs
 
-	var totalCharCount float64
-	for _, charStats := range m {
-		totalCharCount += charStats.Count
-	}
-
-	maxScore := totalCharCount * 50.0
-
-	for b, charStats := range m {
-		engStats, ok := freqs[b]
+	// expected letters
+	for b, en := range freqs {
+		stats, ok := m[b]
 		if ok {
-			penalty += charStats.Count * math.Abs(engStats.Freq-charStats.Freq)
+			letterPenalty += en.Freq * math.Abs(en.Freq-stats.Freq)
 		} else {
-			// printable but non letter characters
-			if b > 32 && b <= 126 {
-				// limited penalty
-				penalty += charStats.Count * 5
-			} else {
-				if IsNumber(b) {
-					penalty += charStats.Count * 2
-					continue
-				}
-				if IsSpace(b) {
-					// average word length 5.1 characters
-					expectedSpaces := (totalCharCount / 5.1) - 1
-					expF := (expectedSpaces * 100) / totalCharCount
-					minExpF := (((totalCharCount / 3) - 1) * 100) / totalCharCount
-
-					if charStats.Freq < minExpF {
-						penalty += totalCharCount * 100
-						continue
-					}
-
-					penalty += charStats.Count * math.Abs(expF-charStats.Freq)
-					continue
-				}
-				// highest penalty for non printable chars
-				penalty += charStats.Count * 50
-			}
+			letterPenalty += en.Freq * en.Freq
 		}
 	}
 
-	return maxScore - penalty
+	var spacePenalty float64
+	if spacedText {
+		stats, ok := m[' ']
+		if ok {
+			spacePenalty = 0.15 * math.Abs(stats.Freq-0.15)
+		} else {
+			spacePenalty = 0.15
+		}
+	}
+
+	var punctCount float64
+	var punctFs float64
+	for b, stats := range m {
+		if IsPunctuation(b) {
+			punctCount += stats.Count
+			punctFs += stats.Freq
+			continue
+		}
+		if !IsPrintable(b) {
+			penalty += math.Abs(stats.Freq + 0.2)
+		}
+	}
+	punctuationPenalty := math.Abs(punctFs - 0.02)
+
+	penalty += (letterPenalty + spacePenalty + punctuationPenalty)
+	return math.Max((1.0 - penalty), 0.0)
 }
 
 // ASCIIScore allocates a score based on ASCII like the char map is.
@@ -106,7 +102,7 @@ func (m *CharUseMap) ASCIIScore() float64 {
 	for _, charStats := range *m {
 		totalCharCount += charStats.Count
 	}
-	maxScore := totalCharCount * 50.0
+	score := 0.0
 
 	for b, charStats := range *m {
 		if !IsPrintable(b) {
@@ -115,32 +111,34 @@ func (m *CharUseMap) ASCIIScore() float64 {
 		}
 		// treating letters and numbers are what we want
 		if IsASCIILetter(b) || IsNumber(b) {
-			continue
+			score += charStats.Count * 70
 		}
 		if IsSpace(b) {
-			if charStats.Freq > 0.3 {
+			if charStats.Freq > 0.5 {
 				penalty += charStats.Count * 30
+				continue
 			}
+			score += charStats.Count * 30
 			continue
 		}
 		if IsPunctuation(b) {
 			// check the frequency
 			if charStats.Freq < 0.1 {
 				// probably fine
-				penalty += charStats.Count * 10
+				score += charStats.Count * 10
 				continue
 			}
 			if charStats.Freq < 0.3 {
-				penalty += charStats.Count * 10
+				score += charStats.Count * 5
 				continue
 			}
-			penalty += charStats.Count * 40
+			penalty += charStats.Count * 30
 			continue
 		}
 		penalty += charStats.Count * 60
 	}
 
-	return maxScore - penalty
+	return score - penalty
 }
 
 func (m *CharUseMap) String() string {
@@ -151,11 +149,12 @@ func (m *CharUseMap) String() string {
 	return out
 }
 
-// IsPunctuation checks if the provided byte can be considered as punctuation
+// IsPunctuation checks if the provided byte can be considered as "punctuation"
 func IsPunctuation(b byte) bool {
 	switch b {
-	// !"'(),:;?
-	case 33, 34, 39, 40, 41, 44, 46, 58, 59, 63:
+	case '"', '\'', '(', ')', ',', ':', ';', '?', '!':
+		return true
+	case '[', ']', '{', '}', '+', '-', '~', '`', '*', '%', '@', '$', '<', '>', '|', '_', '\\', '/':
 		return true
 	default:
 		return false
@@ -188,8 +187,15 @@ func IsSpace(b byte) bool {
 	return b == 32
 }
 
+// IsPrintable checks that a byte can be printed
 func IsPrintable(b byte) bool {
-	return b >= 32 && b <= 126
+	switch b {
+	case 9, 10, 12, 13:
+		return true
+	default:
+		return (b >= 32 && b <= 126)
+	}
+
 }
 
 // CharMaps are a colletion of CharUseMaps so we can compare them to each other.
@@ -200,7 +206,7 @@ func (maps *CharMaps) MostEnglish() *CharUseMap {
 	bestScore := 0.0
 	winnerIDX := -1
 	for i, cmap := range *maps {
-		score := cmap.EnglishScore()
+		score := cmap.EnglishScore(true)
 		if score > bestScore {
 			winnerIDX = i
 			bestScore = score
@@ -226,12 +232,11 @@ func NewCharMap(str []byte) *CharUseMap {
 		}
 		charCount[b]++
 	}
-	// TODO: word lengths
-	m := CharUseMap{' ': &CharStats{}}
+	m := CharUseMap{}
 	for b, count := range charCount {
 		m[b] = &CharStats{
 			Count: float64(count),
-			Freq:  (100.0 * float64(count)) / float64(len(charCount)),
+			Freq:  float64(count) / float64(len(charCount)),
 		}
 	}
 	return &m
